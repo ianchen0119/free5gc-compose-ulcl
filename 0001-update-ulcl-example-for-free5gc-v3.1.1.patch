@@ -1,0 +1,352 @@
+From 39a9c2e3fd40c810acf0c05f89c0d04687e79ab6 Mon Sep 17 00:00:00 2001
+From: ianchen0119 <ychen.desl@gmail.com>
+Date: Mon, 6 Jun 2022 15:30:54 +0000
+Subject: [PATCH] update ulcl example for free5gc v3.1.1
+
+---
+ config/smfcfg.yaml    | 58 +++++++++++++++++++++++++++++++---
+ config/uecfg-2.yaml   | 72 +++++++++++++++++++++++++++++++++++++++++++
+ config/uerouting.yaml | 14 ++++++++-
+ config/upfcfg-1.yaml  | 28 +++++++++++++++++
+ config/upfcfg-2.yaml  | 28 +++++++++++++++++
+ config/upfcfg.yaml    |  2 ++
+ docker-compose.yaml   | 37 +++++++++++++++++++++-
+ 7 files changed, 233 insertions(+), 6 deletions(-)
+ create mode 100644 config/uecfg-2.yaml
+ create mode 100644 config/upfcfg-1.yaml
+ create mode 100644 config/upfcfg-2.yaml
+
+diff --git a/config/smfcfg.yaml b/config/smfcfg.yaml
+index 92572cc..9d77a56 100644
+--- a/config/smfcfg.yaml
++++ b/config/smfcfg.yaml
+@@ -24,6 +24,13 @@ configuration:
+         - dnn: internet # Data Network Name
+           dns: # the IP address of DNS
+             ipv4: 8.8.8.8
++    - sNssai: # S-NSSAI (Single Network Slice Selection Assistance Information)
++        sst: 1 # Slice/Service Type (uinteger, range: 0~255)
++        sd: 112233 # Slice Differentiator (3 bytes hex string, range: 000000~FFFFFF)
++      dnnInfos: # DNN information list
++        - dnn: internet # Data Network Name
++          dns: # the IP address of DNS
++            ipv4: 8.8.8.8
+   plmnList: # the list of PLMN IDs that this SMF belongs to (optional, remove this key when unnecessary)
+     - mcc: "208" # Mobile Country Code (3 digits string, digit: 0~9)
+       mnc: "93" # Mobile Network Code (2 or 3 digits string, digit: 0~9)
+@@ -34,9 +41,32 @@ configuration:
+     upNodes: # information of userplane node (AN or UPF)
+       gNB: # the name of the node
+         type: AN # the type of the node (AN or UPF)
+-      UPF:  # the name of the node
++      BranchingUPF:  # the name of the node
+         type: UPF # the type of the node (AN or UPF)
+         nodeID: upf.free5gc.org # the IP/FQDN of N4 interface on this UPF (PFCP)
++        sNssaiUpfInfos: # S-NSSAI information list for this UPF
++          - sNssai: # S-NSSAI (Single Network Slice Selection Assistance Information)
++              sst: 1 # Slice/Service Type (uinteger, range: 0~255)
++              sd: 010203 # Slice Differentiator (3 bytes hex string, range: 000000~FFFFFF)
++            dnnUpfInfoList:
++              - dnn: internet
++          - sNssai: # S-NSSAI (Single Network Slice Selection Assistance Information)
++              sst: 1 # Slice/Service Type (uinteger, range: 0~255)
++              sd: 112233 # Slice Differentiator (3 bytes hex string, range: 000000~FFFFFF)
++            dnnUpfInfoList:
++              - dnn: internet
++        interfaces: # Interface list for this UPF
++          - interfaceType: N3 # the type of the interface (N3 or N9)
++            endpoints: # the IP address of this N3/N9 interface on this UPF
++              - upf.free5gc.org
++            networkInstance: internet # Data Network Name (DNN)
++          - interfaceType: N9 # the type of the interface (N3 or N9)
++            endpoints: # the IP address of this N3/N9 interface on this UPF
++              - upf.free5gc.org
++            networkInstance: internet # Data Network Name (DNN)
++      AnchorUPF1:  # the name of the node
++        type: UPF # the type of the node (AN or UPF)
++        nodeID: upf-1.free5gc.org # the IP/FQDN of N4 interface on this UPF (PFCP)
+         sNssaiUpfInfos: # S-NSSAI information list for this UPF
+           - sNssai: # S-NSSAI (Single Network Slice Selection Assistance Information)
+               sst: 1 # Slice/Service Type (uinteger, range: 0~255)
+@@ -46,13 +76,33 @@ configuration:
+                 pools:
+                   - cidr: 10.60.0.0/16
+         interfaces: # Interface list for this UPF
+-          - interfaceType: N3 # the type of the interface (N3 or N9)
++          - interfaceType: N9 # the type of the interface (N3 or N9)
+             endpoints: # the IP address of this N3/N9 interface on this UPF
+-              - upf.free5gc.org
++              - upf-1.free5gc.org
++            networkInstance: internet # Data Network Name (DNN)
++      AnchorUPF2:  # the name of the node
++        type: UPF # the type of the node (AN or UPF)
++        nodeID: upf-2.free5gc.org # the IP/FQDN of N4 interface on this UPF (PFCP)
++        sNssaiUpfInfos: # S-NSSAI information list for this UPF
++          - sNssai: # S-NSSAI (Single Network Slice Selection Assistance Information)
++              sst: 1 # Slice/Service Type (uinteger, range: 0~255)
++              sd: 112233 # Slice Differentiator (3 bytes hex string, range: 000000~FFFFFF)
++            dnnUpfInfoList: # DNN information list for this S-NSSAI
++              - dnn: internet
++                pools:
++                  - cidr: 10.61.0.1/32
++        interfaces: # Interface list for this UPF
++          - interfaceType: N9 # the type of the interface (N3 or N9)
++            endpoints: # the IP address of this N3/N9 interface on this UPF
++              - upf-2.free5gc.org
+             networkInstance: internet # Data Network Name (DNN)
+     links: # the topology graph of userplane, A and B represent the two nodes of each link
+       - A: gNB
+-        B: UPF
++        B: BranchingUPF
++      - A: BranchingUPF
++        B: AnchorUPF1
++      - A: BranchingUPF
++        B: AnchorUPF2
+   nrfUri: http://nrf.free5gc.org:8000 # a valid URI of NRF
+ 
+ # the kind of log output
+diff --git a/config/uecfg-2.yaml b/config/uecfg-2.yaml
+new file mode 100644
+index 0000000..09d8dfd
+--- /dev/null
++++ b/config/uecfg-2.yaml
+@@ -0,0 +1,72 @@
++# IMSI number of the UE. IMSI = [MCC|MNC|MSISDN] (In total 15 digits)
++supi: 'imsi-208930000000002'
++# Mobile Country Code value of HPLMN
++mcc: '208'
++# Mobile Network Code value of HPLMN (2 or 3 digits)
++mnc: '93'
++
++# Permanent subscription key
++key: '8baf473f2f8fd09487cccbd7097c6862'
++# Operator code (OP or OPC) of the UE
++op: '8e27b6af0e692e750f32667a3b14605d'
++# This value specifies the OP type and it can be either 'OP' or 'OPC'
++opType: 'OPC'
++# Authentication Management Field (AMF) value
++amf: '8000'
++# IMEI number of the device. It is used if no SUPI is provided
++imei: '356938035643803'
++# IMEISV number of the device. It is used if no SUPI and IMEI is provided
++imeiSv: '4370816125816151'
++
++# List of gNB IP addresses for Radio Link Simulation
++gnbSearchList:
++  - 127.0.0.1
++
++# UAC Access Identities Configuration
++uacAic:
++  mps: false
++  mcs: false
++
++# UAC Access Control Class
++uacAcc:
++  normalClass: 0
++  class11: false
++  class12: false
++  class13: false
++  class14: false
++  class15: false
++
++# Initial PDU sessions to be established
++sessions:
++  - type: 'IPv4'
++    apn: 'internet'
++    slice:
++      sst: 0x01
++      sd: 0x112233
++
++# Configured NSSAI for this UE by HPLMN
++configured-nssai:
++  - sst: 0x01
++    sd: 0x112233
++
++# Default Configured NSSAI for this UE
++default-nssai:
++  - sst: 1
++    sd: 1
++
++# Supported integrity algorithms by this UE
++integrity:
++  IA1: true
++  IA2: true
++  IA3: true
++
++# Supported encryption algorithms by this UE
++ciphering:
++  EA1: true
++  EA2: true
++  EA3: true
++
++# Integrity protection maximum data rate for user plane
++integrityMaxRate:
++  uplink: 'full'
++  downlink: 'full'
+diff --git a/config/uerouting.yaml b/config/uerouting.yaml
+index 4162faf..0a887ea 100644
+--- a/config/uerouting.yaml
++++ b/config/uerouting.yaml
+@@ -10,4 +10,16 @@ ueRoutingInfo: # the list of UE routing information
+     # default path derived from this topology
+     # node name should be consistent with smfcfg.yaml
+       - A: gNB
+-        B: UPF
++        B: BranchingUPF
++      - A: BranchingUPF
++        B: AnchorUPF1
++  UE2: # Group Name
++    members:
++    - imsi-208930000000002 # Subscription Permanent Identifier of the UE
++    topology: # Network topology for this group (Uplink: A->B, Downlink: B->A)
++    # default path derived from this topology
++    # node name should be consistent with smfcfg.yaml
++      - A: gNB
++        B: BranchingUPF
++      - A: BranchingUPF
++        B: AnchorUPF2
+diff --git a/config/upfcfg-1.yaml b/config/upfcfg-1.yaml
+new file mode 100644
+index 0000000..9f871f8
+--- /dev/null
++++ b/config/upfcfg-1.yaml
+@@ -0,0 +1,28 @@
++info:
++  version: 1.0.0
++  description: UPF configuration
++
++configuration:
++  # debugLevel: panic|fatal|error|warn|info|debug|trace
++  debugLevel: info
++  ReportCaller: false
++
++  # packetBufferHoldTime should be longer than Paging retry-out time of AMF.
++  # unit: seconds
++  packetBufferHoldTime: 30
++
++  pfcp:
++    - addr: upf-1.free5gc.org
++
++  gtpu:
++    - addr: upf-1.free5gc.org
++    # [optional] gtpu.name
++    # - name: upf.5gc.nctu.me
++    # [optional] gtpu.ifname
++    # - ifname: gtpif
++
++  dnn_list:
++    - dnn: internet
++      cidr: 10.60.0.0/16
++      # [optional] apn_list[*].natifname
++      # natifname: eth0
+diff --git a/config/upfcfg-2.yaml b/config/upfcfg-2.yaml
+new file mode 100644
+index 0000000..5182e96
+--- /dev/null
++++ b/config/upfcfg-2.yaml
+@@ -0,0 +1,28 @@
++info:
++  version: 1.0.0
++  description: UPF configuration
++
++configuration:
++  # debugLevel: panic|fatal|error|warn|info|debug|trace
++  debugLevel: info
++  ReportCaller: false
++
++  # packetBufferHoldTime should be longer than Paging retry-out time of AMF.
++  # unit: seconds
++  packetBufferHoldTime: 30
++
++  pfcp:
++    - addr: upf-2.free5gc.org
++
++  gtpu:
++    - addr: upf-2.free5gc.org
++    # [optional] gtpu.name
++    # - name: upf.5gc.nctu.me
++    # [optional] gtpu.ifname
++    # - ifname: gtpif
++
++  dnn_list:
++    - dnn: internet
++      cidr: 10.61.0.0/16
++      # [optional] apn_list[*].natifname
++      # natifname: eth0
+diff --git a/config/upfcfg.yaml b/config/upfcfg.yaml
+index 359918f..f91ff8e 100644
+--- a/config/upfcfg.yaml
++++ b/config/upfcfg.yaml
+@@ -24,5 +24,7 @@ configuration:
+   dnn_list:
+     - dnn: internet
+       cidr: 10.60.0.0/16
++    - dnn: internet
++      cidr: 10.61.0.0/16
+       # [optional] apn_list[*].natifname
+       # natifname: eth0
+diff --git a/docker-compose.yaml b/docker-compose.yaml
+index 8b7ab5a..70c9302 100644
+--- a/docker-compose.yaml
++++ b/docker-compose.yaml
+@@ -2,7 +2,7 @@ version: '3.8'
+ 
+ services:
+   free5gc-upf:
+-    container_name: upf
++    container_name: branching-upf
+     build:
+       context: ./nf_upf
+       args:
+@@ -18,6 +18,40 @@ services:
+         aliases:
+           - upf.free5gc.org
+ 
++  free5gc-upf-anchor1:
++    container_name: upf-anchor1
++    build:
++      context: ./nf_upf
++      args:
++        DEBUG_TOOLS: "false"
++    command: bash -c "./upf-iptables.sh && ./free5gc-upfd -c ./config/upfcfg.yaml"
++    volumes:
++      - ./config/upfcfg-1.yaml:/free5gc/config/upfcfg.yaml
++      - ./config/upf-iptables.sh:/free5gc/upf-iptables.sh
++    cap_add:
++      - NET_ADMIN
++    networks:
++      privnet:
++        aliases:
++          - upf-1.free5gc.org
++
++  free5gc-upf-anchor2:
++    container_name: upf-anchor2
++    build:
++      context: ./nf_upf
++      args:
++        DEBUG_TOOLS: "false"
++    command: bash -c "./upf-iptables.sh && ./free5gc-upfd -c ./config/upfcfg.yaml"
++    volumes:
++      - ./config/upfcfg-2.yaml:/free5gc/config/upfcfg.yaml
++      - ./config/upf-iptables.sh:/free5gc/upf-iptables.sh
++    cap_add:
++      - NET_ADMIN
++    networks:
++      privnet:
++        aliases:
++          - upf-2.free5gc.org
++
+   db:
+     container_name: mongodb
+     image: mongo
+@@ -248,6 +282,7 @@ services:
+     volumes:
+       - ./config/gnbcfg.yaml:/ueransim/config/gnbcfg.yaml
+       - ./config/uecfg.yaml:/ueransim/config/uecfg.yaml
++      - ./config/uecfg-2.yaml:/ueransim/config/uecfg-2.yaml
+     cap_add:
+       - NET_ADMIN
+     devices:
+-- 
+2.25.1
+
